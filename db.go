@@ -107,3 +107,25 @@ func getTweetsByUser(db *sql.DB, user string) []Tweet {
 	}
 	return tweets
 }
+
+func filterTweets(db *sql.DB, keyword string) []Tweet {
+	var tweets []Tweet
+	query := `SELECT * FROM feed WHERE message LIKE ?;`
+	rows, err := db.Query(query, "%"+keyword+"%")
+	if err != nil {
+		panic(err)
+	}
+	for rows.Next() {
+		var id int
+		var username string
+		var message string
+		err = rows.Scan(&id, &username, &message)
+		if err == sql.ErrNoRows {
+			return []Tweet{{00, "no content", "no content"}}
+		} else if err != nil {
+			panic(err)
+		}
+		tweets = append(tweets, Tweet{Id: id, Username: username, Message: message})
+	}
+	return tweets
+}

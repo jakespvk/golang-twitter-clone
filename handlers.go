@@ -90,3 +90,18 @@ func (conn *Server) getTweetsByUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write(jsonChats)
 }
+
+func (conn *Server) filterTweetsByKeyword(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	chats := filterTweets(conn.DB, vars["keyword"])
+
+	jsonChats, err := json.Marshal(chats)
+	if err != nil {
+		panic(err)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(jsonChats)
+}
