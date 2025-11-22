@@ -1,19 +1,33 @@
 package main
 
 import (
+	// "context"
 	"database/sql"
 	"fmt"
 	"net/http"
 
+	// "github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/awslabs/aws-lambda-go-api-proxy/httpadapter"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 )
 
+var adapter *httpadapter.HandlerAdapter
+
 func main() {
-	db, err := sql.Open("sqlite3", "test.db")
+
+	dbPath, err := setupDatabase()
 	if err != nil {
-		panic(err)
+		fmt.Println("Error setting up database:", err)
+		return
+	}
+
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		fmt.Println("Error opening database:", err)
+		return
 	}
 	defer db.Close()
 
@@ -21,21 +35,31 @@ func main() {
 
 	conn := &Server{DB: db}
 
-	r := mux.NewRouter()
+	router := mux.NewRouter()
+
 	corsHandler := handlers.CORS(
 		handlers.AllowedOrigins([]string{"*"}), // Allow all origins (use specific origins in production)
 		handlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}),
 		handlers.AllowedHeaders([]string{"Content-Type", "Authorization"}),
 	)
-	r.HandleFunc("/", helloWorld).Methods("GET")
-	r.HandleFunc("/chats", conn.getChats).Methods("GET")
-	r.HandleFunc("/chat", conn.postTweet).Methods("POST")
-	r.HandleFunc("/chat/{id:[0-9]+}", conn.getTweet).Methods("GET")
-	r.HandleFunc("/chat/{id:[0-9]+}", conn.deleteTweet).Methods("DELETE")
-	r.HandleFunc("/chats/{user}", conn.getTweetsByUser).Methods("GET")
-	r.HandleFunc("/chats/filter/{keyword}", conn.filterTweetsByKeyword).Methods("GET")
-	http.Handle("/", r)
 
-	fmt.Println("Server is listening on port 8080")
-	http.ListenAndServe(":8080", corsHandler(r))
+	router.HandleFunc("/", helloWorld).Methods("GET")
+	router.HandleFunc("/chats", conn.getChats).Methods("GET")
+	router.HandleFunc("/chat", conn.postTweet).Methods("POST")
+	router.HandleFunc("/chat/{id:[0-9]+}", conn.getTweet).Methods("GET")
+	router.HandleFunc("/chat/{id:[0-9]+}", conn.deleteTweet).Methods("DELETE")
+	router.HandleFunc("/chats/{user}", conn.getTweetsByUser).Methods("GET")
+	router.HandleFunc("/chats/filter/{keyword}", conn.filterTweetsByKeyword).Methods("GET")
+	http.Handle("/", router)
+
+	adapter = httpadapter.New(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Fix path for AWS Lambda function URLs
+		if rawPath := r.Header.Get("X-Forwarded-Path"); rawPath != "" {
+			r.URL.Path = rawPath
+		}
+
+		router.Use(corsHandler)
+		router.ServeHTTP(w, r)
+	}))
+	lambda.Start(adapter.ProxyWithContext)
 }

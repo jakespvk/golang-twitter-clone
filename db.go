@@ -3,7 +3,38 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"io"
+	"os"
 )
+
+func setupDatabase() (string, error) {
+	sourceDB := "test.db"
+	destDB := "/tmp/test.db"
+
+	if _, err := os.Stat(destDB); os.IsNotExist(err) {
+		srcFile, err := os.Open(sourceDB)
+		if err != nil {
+			return "", fmt.Errorf("failed to open source DB: %v", err)
+		}
+		defer srcFile.Close()
+
+		destFile, err := os.Create(destDB)
+		if err != nil {
+			return "", fmt.Errorf("failed to create destination DB: %v", err)
+		}
+		defer destFile.Close()
+
+		_, err = io.Copy(destFile, srcFile)
+		if err != nil {
+			return "", fmt.Errorf("failed to copy DB: %v", err)
+		}
+		fmt.Println("Database copied to /tmp/")
+	} else {
+		fmt.Println("Database already exists in /tmp/")
+	}
+
+	return destDB, nil
+}
 
 func createTable(db *sql.DB) {
 	query := `CREATE TABLE IF NOT EXISTS feed (
