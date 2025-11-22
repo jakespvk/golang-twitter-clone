@@ -37,5 +37,5 @@ func main() {
 	http.Handle("/", r)
 
 	fmt.Println("Server is listening on port 8080")
-	http.ListenAndServe(":8080", corsHandler(r))
+	http.ListenAndServe(":8081", corsHandler(r))
 }
