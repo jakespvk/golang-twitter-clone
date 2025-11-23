@@ -5,7 +5,19 @@ import (
 )
 
 type Tweet struct {
-	Id       int    `json:"id"`
+	ID       int    `json:"id"`
+	Username string `json:"username"`
+	Message  string `json:"message"`
+}
+
+type Reply struct {
+	ID       int    `json:"id"`
+	TweetID  int    `json:"tweetId"`
+	Username string `json:"username"`
+	Message  string `json:"message"`
+}
+
+type TweetReplyRequest struct {
 	Username string `json:"username"`
 	Message  string `json:"message"`
 }

@@ -38,6 +38,27 @@ func (conn *Server) postTweet(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func (conn *Server) postTweetReply(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	// TODO: add proper error handling for no 'id' param specified
+	id, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		http.Error(w, "Invlaid ID format", http.StatusBadRequest)
+	}
+
+	var tweetReplyRequest TweetReplyRequest
+	if err := json.NewDecoder(r.Body).Decode(&tweetReplyRequest); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	reply := Reply{TweetID: id, Username: tweetReplyRequest.Username, Message: tweetReplyRequest.Message}
+
+	insertReply(conn.DB, reply)
+	w.WriteHeader(http.StatusOK)
+}
+
 func (conn *Server) getTweet(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
@@ -48,7 +69,29 @@ func (conn *Server) getTweet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// TODO: add proper error handling if nothing is returned
-	chat := getTweetById(conn.DB, id)
+	chat := getTweetByID(conn.DB, id)
+
+	jsonChats, err := json.Marshal(chat)
+	if err != nil {
+		panic(err)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(jsonChats)
+}
+
+func (conn *Server) getTweetReplies(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	// TODO: add proper error handling for no 'id' param specified
+	id, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		http.Error(w, "Invalid ID format", http.StatusBadRequest)
+	}
+
+	// TODO: add proper error handling if nothing is returned
+	chat := getTweetRepliesByTweetID(conn.DB, id)
 
 	jsonChats, err := json.Marshal(chat)
 	if err != nil {
@@ -70,7 +113,7 @@ func (conn *Server) deleteTweet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// TODO: add proper error handling if nothing is returned
-	deleteTweetById(conn.DB, id)
+	deleteTweetByID(conn.DB, id)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)

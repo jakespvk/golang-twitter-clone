@@ -32,10 +32,12 @@ func main() {
 	r.HandleFunc("/chat", conn.postTweet).Methods("POST")
 	r.HandleFunc("/chat/{id:[0-9]+}", conn.getTweet).Methods("GET")
 	r.HandleFunc("/chat/{id:[0-9]+}", conn.deleteTweet).Methods("DELETE")
+	r.HandleFunc("/chat/{id:[0-9]+}/reply", conn.postTweetReply).Methods("POST")
+	r.HandleFunc("/chat/{id:[0-9]+}/replies", conn.getTweetReplies).Methods("GET")
 	r.HandleFunc("/chats/{user}", conn.getTweetsByUser).Methods("GET")
 	r.HandleFunc("/chats/filter/{keyword}", conn.filterTweetsByKeyword).Methods("GET")
 	http.Handle("/", r)
 
-	fmt.Println("Server is listening on port 8080")
+	fmt.Println("Server is listening on port 8081")
 	http.ListenAndServe(":8081", corsHandler(r))
 }
